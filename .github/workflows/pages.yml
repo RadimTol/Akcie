@@ -3,7 +3,7 @@ name: Update CSV and deploy Pages
 on:
   workflow_dispatch:
   schedule:
-    - cron: "15 13 * * 1-5"
+    - cron: "15 6-18 * * 1-5"
 
 permissions:
   contents: write
