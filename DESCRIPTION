@@ -1,6 +1,8 @@
-Package: stocks-dashboard
+Package: stocksdashboard
 Type: Project
-Depends:
+Version: 0.1.0
+Description: Stock data generator for GitHub Pages dashboard
+Imports:
     quantmod,
     httr,
     jsonlite
