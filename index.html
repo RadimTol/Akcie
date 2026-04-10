@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <title>30denní vývoj cen vybraných akcií</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #0f1722;
+      --panel: #182231;
+      --panel-inner: #223044;
+      --border: #2d3b50;
+      --text: #e8eef7;
+      --muted: #9fb0c7;
+      --grid: rgba(255, 255, 255, 0.08);
+      --line: #8ec5ff;
+      --trend: #ffd166;
+      --star: #ff7b72;
+      --shadow: rgba(0, 0, 0, 0.35);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: linear-gradient(180deg, #0c131d 0%, var(--bg) 100%);
+      color: var(--text);
+    }
+
+    h2 {
+      margin: 0 0 20px 0;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      color: var(--text);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 18px;
+    }
+
+    .chart-container {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      background: linear-gradient(180deg, var(--panel) 0%, #141d2a 100%);
+      box-shadow: 0 8px 22px var(--shadow);
+    }
+
+    .chart-shell {
+      background: linear-gradient(180deg, var(--panel-inner) 0%, #1d2a3c 100%);
+      border: 1px solid rgba(255,255,255,0.04);
+      border-radius: 8px;
+      padding: 8px;
+    }
+
+    canvas {
+      width: 100% !important;
+      height: 260px !important;
+    }
+
+    @media (max-width: 1400px) {
+      .grid { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    @media (max-width: 1050px) {
+      .grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 700px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <h2>30denní vývoj cen vybraných akcií</h2>
+  <div class="grid" id="charts"></div>
+
+  <script>
+    async function loadCSV(path) {
+      const sep = path.includes("?") ? "&" : "?";
+      const bustPath = `${path}${sep}_ts=${Date.now()}`;
+
+      const res = await fetch(bustPath, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          "Pragma": "no-cache"
+        }
+      });
+
+      const text = await res.text();
+
+      return text
+        .trim()
+        .split("\n")
+        .slice(1)
+        .map(row => row
+          .split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/)
+          .map(v => v.replace(/^"|"$/g, "").trim())
+        );
+    }
+
+    function linearTrend(values) {
+      const pts = values
+        .map((y, x) => ({ x, y }))
+        .filter(p => Number.isFinite(p.y));
+
+      if (pts.length < 2) return values.map(() => null);
+
+      const n = pts.length;
+      const sumX = pts.reduce((a, p) => a + p.x, 0);
+      const sumY = pts.reduce((a, p) => a + p.y, 0);
+      const sumXY = pts.reduce((a, p) => a + p.x * p.y, 0);
+      const sumXX = pts.reduce((a, p) => a + p.x * p.x, 0);
+
+      const denom = n * sumXX - sumX * sumX;
+      if (denom === 0) return values.map(() => null);
+
+      const slope = (n * sumXY - sumX * sumY) / denom;
+      const intercept = (sumY - slope * sumX) / n;
+
+      return values.map((_, x) => intercept + slope * x);
+    }
+
+    function parseCZDateOnly(dateStr) {
+      if (!dateStr) return null;
+      const m = dateStr.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+      if (!m) return null;
+      const [, dd, mm, yyyy] = m;
+      return new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+    }
+
+    function parseSnapshotDate(dateTimeStr) {
+      if (!dateTimeStr) return null;
+
+      let m = dateTimeStr.match(/^(\d{2})\.(\d{2})\.(\d{4})\s+(\d{2}):(\d{2})$/);
+      if (m) {
+        const [, dd, mm, yyyy, hh, mi] = m;
+        return new Date(Number(yyyy), Number(mm) - 1, Number(dd), Number(hh), Number(mi));
+      }
+
+      m = dateTimeStr.match(/^(\d{2})\.(\d{2})\.(\d{4})\s+close$/i);
+      if (m) {
+        const [, dd, mm, yyyy] = m;
+        return new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+      }
+
+      m = dateTimeStr.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+      if (m) {
+        const [, dd, mm, yyyy] = m;
+        return new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+      }
+
+      return null;
+    }
+
+    function startOfDay(d) {
+      return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    }
+
+    function formatDay(d) {
+      return String(d.getDate()).padStart(2, "0");
+    }
+
+    function formatCZDate(d) {
+      const dd = String(d.getDate()).padStart(2, "0");
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const yyyy = d.getFullYear();
+      return `${dd}.${mm}.${yyyy}`;
+    }
+
+    function formatKey(d) {
+      const dd = String(d.getDate()).padStart(2, "0");
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const yyyy = d.getFullYear();
+      return `${yyyy}-${mm}-${dd}`;
+    }
+
+    function dateRange(startDate, endDate) {
+      const out = [];
+      const cur = new Date(startDate);
+      while (cur <= endDate) {
+        out.push(new Date(cur));
+        cur.setDate(cur.getDate() + 1);
+      }
+      return out;
+    }
+
+    function shortSource(source) {
+      if (source === "twelve_data_price") return "TWELVE";
+      if (source === "yahoo_fallback") return "YAHOO";
+      return source || "";
+    }
+
+    async function init() {
+      const history = await loadCSV("stocks_history_30d.csv");
+      const snapshot = await loadCSV("stocks.csv");
+
+      const snapshotRowsByTicker = {};
+
+      snapshot.forEach(r => {
+        if (r.length >= 6) {
+          const row = {
+            ticker: r[0],
+            name: r[1],
+            price: parseFloat(r[2]),
+            currency: r[3],
+            time: r[4],
+            source: r[5],
+            parsedDate: parseSnapshotDate(r[4])
+          };
+
+          if (!snapshotRowsByTicker[row.ticker]) {
+            snapshotRowsByTicker[row.ticker] = [];
+          }
+          snapshotRowsByTicker[row.ticker].push(row);
+        }
+      });
+
+      const latestSnapshotByTicker = {};
+      Object.keys(snapshotRowsByTicker).forEach(ticker => {
+        const rows = snapshotRowsByTicker[ticker]
+          .filter(r => r.parsedDate instanceof Date && !isNaN(r.parsedDate));
+
+        if (rows.length > 0) {
+          rows.sort((a, b) => a.parsedDate - b.parsedDate);
+          latestSnapshotByTicker[ticker] = rows[rows.length - 1];
+        } else {
+          latestSnapshotByTicker[ticker] = snapshotRowsByTicker[ticker][snapshotRowsByTicker[ticker].length - 1];
+        }
+      });
+
+      const dataMap = {};
+      const tickerOrder = [];
+
+      history.forEach(r => {
+        if (r.length >= 5) {
+          const dateStr = r[0];
+          const ticker = r[1];
+          const name = r[2];
+          const price = parseFloat(r[3]);
+          const currency = r[4];
+
+          if (!tickerOrder.includes(ticker)) tickerOrder.push(ticker);
+
+          if (!dataMap[ticker]) dataMap[ticker] = [];
+          dataMap[ticker].push({
+            fullDate: dateStr,
+            dateObj: parseCZDateOnly(dateStr),
+            price: price,
+            currency: currency,
+            name: name
+          });
+        }
+      });
+
+      const container = document.getElementById("charts");
+      container.innerHTML = "";
+
+      tickerOrder.forEach(ticker => {
+        if (!dataMap[ticker] || dataMap[ticker].length === 0) return;
+
+        const series = dataMap[ticker]
+          .filter(x => x.dateObj && Number.isFinite(x.price))
+          .sort((a, b) => a.dateObj - b.dateObj);
+
+        if (series.length === 0) return;
+
+        const snap = latestSnapshotByTicker[ticker] || null;
+
+        const currentPrice = snap ? snap.price : NaN;
+        const currency = snap?.currency || series[0].currency || "";
+        const name = snap?.name || series[0].name || "";
+        const source = snap?.source || "";
+        const sourceShort = shortSource(source);
+        const snapTime = snap?.time || "";
+        const snapDateTime = snap?.parsedDate || null;
+
+        const A = startOfDay(series[0].dateObj);
+        const B = startOfDay(series[series.length - 1].dateObj);
+
+        let C = B;
+        if (snapDateTime instanceof Date && !isNaN(snapDateTime)) {
+          const snapDay = startOfDay(snapDateTime);
+          if (snapDay > C) C = snapDay;
+        }
+
+        const axisDates = dateRange(A, C);
+        const labels = axisDates.map(d => formatDay(d));
+        const titles = axisDates.map(d => formatCZDate(d));
+        const dateKeys = axisDates.map(d => formatKey(d));
+
+        const historyByDay = {};
+        series.forEach(item => {
+          historyByDay[formatKey(startOfDay(item.dateObj))] = item.price;
+        });
+
+        const lineData = dateKeys.map(key =>
+          Object.prototype.hasOwnProperty.call(historyByDay, key)
+            ? historyByDay[key]
+            : null
+        );
+
+        const starData = new Array(axisDates.length).fill(null);
+
+        if (Number.isFinite(currentPrice)) {
+          let targetDay = B;
+
+          if (source === "twelve_data_price" && snapDateTime instanceof Date && !isNaN(snapDateTime)) {
+            targetDay = startOfDay(snapDateTime);
+          }
+
+          const targetKey = formatKey(targetDay);
+          const idx = dateKeys.indexOf(targetKey);
+
+          if (idx >= 0) {
+            starData[idx] = currentPrice;
+          }
+        }
+
+        let trendData = linearTrend(series.map(x => x.price));
+        while (trendData.length < axisDates.length) {
+          trendData.push(trendData[trendData.length - 1]);
+        }
+
+        const outer = document.createElement("div");
+        outer.className = "chart-container";
+
+        const shell = document.createElement("div");
+        shell.className = "chart-shell";
+
+        const canvas = document.createElement("canvas");
+        shell.appendChild(canvas);
+        outer.appendChild(shell);
+        container.appendChild(outer);
+
+        new Chart(canvas, {
+          type: "line",
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: ticker,
+                data: lineData,
+                borderColor: getComputedStyle(document.documentElement).getPropertyValue('--line').trim(),
+                backgroundColor: "transparent",
+                borderWidth: 2.4,
+                fill: false,
+                tension: 0,
+                pointRadius: 0,
+                pointHoverRadius: 4,
+                pointHoverBackgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--line').trim(),
+                spanGaps: false
+              },
+              {
+                label: "Trend",
+                data: trendData,
+                borderColor: getComputedStyle(document.documentElement).getPropertyValue('--trend').trim(),
+                backgroundColor: "transparent",
+                borderWidth: 1.8,
+                borderDash: [6, 6],
+                fill: false,
+                tension: 0.35,
+                pointRadius: 0,
+                pointHoverRadius: 0,
+                spanGaps: true
+              },
+              {
+                label: "Aktuální cena",
+                data: starData,
+                borderColor: getComputedStyle(document.documentElement).getPropertyValue('--star').trim(),
+                backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--star').trim(),
+                pointStyle: "star",
+                pointRadius: 9,
+                pointHoverRadius: 11,
+                pointHitRadius: 16,
+                showLine: false
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+              mode: "nearest",
+              intersect: false
+            },
+            layout: {
+              padding: {
+                right: 10
+              }
+            },
+            plugins: {
+              legend: {
+                display: false
+              },
+              title: {
+                display: true,
+                text: `${ticker} – ${name} (${sourceShort})`,
+                color: getComputedStyle(document.documentElement).getPropertyValue('--text').trim(),
+                font: {
+                  size: 14,
+                  weight: "bold"
+                },
+                padding: {
+                  top: 4,
+                  bottom: 10
+                }
+              },
+              tooltip: {
+                backgroundColor: "#0f1722",
+                borderColor: "#334155",
+                borderWidth: 1,
+                titleColor: "#e8eef7",
+                bodyColor: "#d8e2f0",
+                callbacks: {
+                  title: function(context) {
+                    const hasSnapshotPoint = context.some(item =>
+                      item.datasetIndex === 2 && item.parsed.y != null
+                    );
+                    if (hasSnapshotPoint) {
+                      return snapTime || "";
+                    }
+
+                    const idx = context[0].dataIndex;
+                    return titles[idx] || "";
+                  },
+                  label: function(context) {
+                    const val = context.parsed.y;
+                    if (val == null) return "";
+                    return `${val} ${currency}`;
+                  },
+                  afterBody: function(context) {
+                    const hasSnapshotPoint = context.some(item =>
+                      item.datasetIndex === 2 && item.parsed.y != null
+                    );
+                    return hasSnapshotPoint && snapTime ? [`Snapshot: ${snapTime}`] : [];
+                  }
+                }
+              }
+            },
+            scales: {
+              x: {
+                type: "category",
+                offset: true,
+                title: {
+                  display: true,
+                  text: "DD",
+                  color: getComputedStyle(document.documentElement).getPropertyValue('--muted').trim()
+                },
+                ticks: {
+                  color: getComputedStyle(document.documentElement).getPropertyValue('--muted').trim(),
+                  maxRotation: 0,
+                  autoSkip: false,
+                  padding: 6,
+                  callback: function(value, index) {
+                    const label = labels[index] || "";
+                    const lastIndex = labels.length - 1;
+
+                    if (index === lastIndex) return label;
+
+                    // zprava doleva: C, C-2, C-4, ...
+                    return ((lastIndex - index) % 2 === 0) ? label : "";
+                  }
+                },
+                grid: {
+                  color: getComputedStyle(document.documentElement).getPropertyValue('--grid').trim()
+                },
+                border: {
+                  color: "#3a4a61"
+                }
+              },
+              y: {
+                title: {
+                  display: true,
+                  text: currency,
+                  color: getComputedStyle(document.documentElement).getPropertyValue('--muted').trim()
+                },
+                ticks: {
+                  color: getComputedStyle(document.documentElement).getPropertyValue('--muted').trim()
+                },
+                grid: {
+                  color: getComputedStyle(document.documentElement).getPropertyValue('--grid').trim()
+                },
+                border: {
+                  color: "#3a4a61"
+                }
+              }
+            }
+          }
+        });
+      });
+    }
+
+    init();
+  </script>
+
+</body>
+</html>
