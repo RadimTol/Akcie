@@ -197,6 +197,45 @@
       return source || "";
     }
 
+    const weekStripePlugin = {
+      id: "weekStripePlugin",
+      beforeDatasetsDraw(chart, args, pluginOptions) {
+        const { ctx, chartArea, scales } = chart;
+        if (!chartArea || !scales.x) return;
+
+        const xScale = scales.x;
+        const axisDates = chart.options.plugins.weekStripePlugin?.axisDates || [];
+        if (!axisDates.length) return;
+
+        ctx.save();
+
+        for (let i = 0; i < axisDates.length; i++) {
+          const d = new Date(axisDates[i]);
+          if (isNaN(d)) continue;
+
+          if (d.getDay() === 1) {
+            const x = xScale.getPixelForValue(i);
+
+            let nextX;
+            if (i < axisDates.length - 1) {
+              nextX = xScale.getPixelForValue(i + 1);
+            } else {
+              nextX = chartArea.right;
+            }
+
+            const prevX = i > 0 ? xScale.getPixelForValue(i - 1) : chartArea.left;
+            const left = (prevX + x) / 2;
+            const right = (x + nextX) / 2;
+
+            ctx.fillStyle = "rgba(255, 255, 255, 0.035)";
+            ctx.fillRect(left, chartArea.top, right - left, chartArea.bottom - chartArea.top);
+          }
+        }
+
+        ctx.restore();
+      }
+    };
+
     async function init() {
       const history = await loadCSV("stocks_history_30d.csv");
       const snapshot = await loadCSV("stocks.csv");
@@ -340,6 +379,7 @@
         container.appendChild(outer);
 
         new Chart(canvas, {
+          plugins: [weekStripePlugin],
           type: "line",
           data: {
             labels: labels,
@@ -396,6 +436,9 @@
               }
             },
             plugins: {
+              weekStripePlugin: {
+                axisDates: axisDates.map(d => d.toISOString())
+              },
               legend: {
                 display: false
               },
@@ -459,21 +502,15 @@
                   autoSkip: false,
                   padding: 6,
                   callback: function(value, index) {
-                    const lastIndex = labels.length - 1;
+                    const d = axisDates[index];
+                    if (!d) return "";
 
-                    const d = new Date(axisDates[index]);
+                    if (d.getDay() !== 1) return "";
+
                     const dd = String(d.getDate()).padStart(2, "0");
                     const mm = String(d.getMonth() + 1).padStart(2, "0");
-                    const label = `${dd}.${mm}.`;
-
-                    // vždy zobraz poslední den (C)
-                    if (index === lastIndex) return label;
-
-                    // zobraz jen pondělky
-                    if (d.getDay() === 1) return label;
-
-                    return "";
-                    }
+                    return `${dd}.${mm}.`;
+                  }
                 },
                 grid: {
                   color: getComputedStyle(document.documentElement).getPropertyValue('--grid').trim()
