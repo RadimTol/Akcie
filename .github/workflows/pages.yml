@@ -1,13 +1,12 @@
-name: Deploy static site to GitHub Pages
+name: Update CSV and deploy Pages
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
+  schedule:
+    - cron: "15 13 * * 1-5"
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -16,8 +15,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  build-update-deploy:
     runs-on: ubuntu-latest
+
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -26,10 +26,35 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup R
+        uses: r-lib/actions/setup-r@v2
+
+      - name: Install R packages
+        run: |
+          Rscript -e 'install.packages(c("quantmod","httr","jsonlite"), repos="https://cloud.r-project.org")'
+
+      - name: Run R script
+        env:
+          TWELVE_DATA_API_KEY: ${{ secrets.TWELVE_DATA_API_KEY }}
+        run: |
+          Rscript AktualniCena.R
+
+      - name: Commit updated CSV files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add stocks.csv stocks_history_30d.csv
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Update stock CSV data"
+            git push
+          fi
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload artifact
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: .
