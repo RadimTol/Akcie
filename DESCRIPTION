@@ -1,0 +1,6 @@
+Package: stocks-dashboard
+Type: Project
+Depends:
+    quantmod,
+    httr,
+    jsonlite
