@@ -459,9 +459,21 @@
                   autoSkip: false,
                   padding: 6,
                   callback: function(value, index) {
-                    const label = labels[index] || "";
-                    return index % 3 === 0 ? label : "";
-                  }
+                    const lastIndex = labels.length - 1;
+
+                    const d = new Date(axisDates[index]);
+                    const dd = String(d.getDate()).padStart(2, "0");
+                    const mm = String(d.getMonth() + 1).padStart(2, "0");
+                    const label = `${dd}.${mm}.`;
+
+                    // vždy zobraz poslední den (C)
+                    if (index === lastIndex) return label;
+
+                    // zobraz jen pondělky
+                    if (d.getDay() === 1) return label;
+
+                    return "";
+                    }
                 },
                 grid: {
                   color: getComputedStyle(document.documentElement).getPropertyValue('--grid').trim()
