@@ -5,7 +5,11 @@ library(jsonlite)
 # --------------------------------
 # Twelve Data API key
 # --------------------------------
-api_key <- "0cdfd49e58824502b938e045552a5ddc"
+api_key <- Sys.getenv("TWELVE_DATA_API_KEY")
+
+if (!nzchar(api_key)) {
+  stop("Chybí TWELVE_DATA_API_KEY.")
+}
 
 # --------------------------------
 # tickery v požadovaném pořadí
@@ -192,7 +196,7 @@ get_snapshot_row <- function(t) {
 snapshot_list <- lapply(tickers, get_snapshot_row)
 snapshot_result <- do.call(rbind, snapshot_list)
 
-write.csv(snapshot_result, "D:/R/Akcie/stocks.csv",
+write.csv(snapshot_result, "stocks.csv",
           row.names = FALSE, fileEncoding = "UTF-8")
 
 # --------------------------------
@@ -252,7 +256,7 @@ get_history_rows <- function(t) {
 history_list <- lapply(tickers, get_history_rows)
 history_result <- do.call(rbind, history_list)
 
-write.csv(history_result, "D:/R/Akcie/stocks_history_30d.csv",
+write.csv(history_result, "stocks_history_30d.csv",
           row.names = FALSE, fileEncoding = "UTF-8")
 
 print(snapshot_result)
