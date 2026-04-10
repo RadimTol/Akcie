@@ -460,12 +460,7 @@
                   padding: 6,
                   callback: function(value, index) {
                     const label = labels[index] || "";
-                    const lastIndex = labels.length - 1;
-
-                    if (index === lastIndex) return label;
-
-                    // zprava doleva: C, C-2, C-4, ...
-                    return ((lastIndex - index) % 2 === 0) ? label : "";
+                    return index % 2 === 0 ? label : "";
                   }
                 },
                 grid: {
