@@ -2,9 +2,6 @@ library(quantmod)
 library(httr)
 library(jsonlite)
 
-# --------------------------------
-# Twelve Data API key
-# --------------------------------
 api_key <- Sys.getenv("TWELVE_DATA_API_KEY")
 
 if (!nzchar(api_key)) {
