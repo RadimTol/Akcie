@@ -74,11 +74,12 @@ currency_map <- c(
 )
 
 # --------------------------------
-# mapování symbolů pro Twelve Data
+# symboly pro Twelve Data
+# Admiral Group PLC na LSE -> ADM.L
 # --------------------------------
 td_symbol_map <- c(
   "ABBV"    = "ABBV",
-  "ADM"     = "ADM",
+  "ADM"     = "ADM.L",
   "RIO"     = "RIO",
   "AES"     = "AES",
   "AMCR"    = "AMCR",
@@ -103,24 +104,73 @@ td_symbol_map <- c(
 )
 
 # --------------------------------
+# symboly pro Yahoo
+# Admiral Group PLC na LSE -> ADM.L
+# --------------------------------
+yahoo_symbol_map <- c(
+  "ABBV"    = "ABBV",
+  "ADM"     = "ADM.L",
+  "RIO"     = "RIO",
+  "AES"     = "AES",
+  "AMCR"    = "AMCR",
+  "KO"      = "KO",
+  "CVS"     = "CVS",
+  "DVN"     = "DVN",
+  "DX"      = "DX",
+  "BEN"     = "BEN",
+  "MBG.DE"  = "MBG.DE",
+  "OMV.VI"  = "OMV.VI",
+  "PK"      = "PK",
+  "PFE"     = "PFE",
+  "O"       = "O",
+  "SVC"     = "SVC",
+  "TGT"     = "TGT",
+  "VZ"      = "VZ",
+  "VOW3.DE" = "VOW3.DE",
+  "BNP.PA"  = "BNP.PA",
+  "0291.HK" = "0291.HK",
+  "CSG.AS"  = "CSG.AS",
+  "PEN.PR"  = "PEN.PR"
+)
+
+# --------------------------------
+# převod ceny do cílové měny
+# ADM na LSE je v GBp/GBX -> GBP
+# --------------------------------
+price_multiplier_map <- c(
+  "ADM" = 0.01
+)
+
+convert_price <- function(ticker, price_value) {
+  mult <- if (ticker %in% names(price_multiplier_map)) {
+    unname(price_multiplier_map[[ticker]])
+  } else {
+    1
+  }
+
+  round(price_value * mult, 4)
+}
+
+# --------------------------------
 # 1) snapshot přes Twelve Data /price
 #    fallback na Yahoo daily close
 # --------------------------------
 get_snapshot_row <- function(t) {
-  
+
   name_val <- if (t %in% names(name_map)) unname(name_map[[t]]) else NA_character_
   currency_val <- if (t %in% names(currency_map)) unname(currency_map[[t]]) else NA_character_
   td_symbol <- if (t %in% names(td_symbol_map)) unname(td_symbol_map[[t]]) else t
-  
+  yahoo_symbol <- if (t %in% names(yahoo_symbol_map)) unname(yahoo_symbol_map[[t]]) else t
+
   tryCatch({
-    
+
     price_val <- NA_real_
     time_val <- NA_character_
     source_val <- NA_character_
-    
+
     # --- pokus přes Twelve Data ---
     td_ok <- FALSE
-    
+
     try({
       url <- modify_url(
         "https://api.twelvedata.com/price",
@@ -129,18 +179,19 @@ get_snapshot_row <- function(t) {
           apikey = api_key
         )
       )
-      
+
       res <- GET(url)
       txt <- content(res, as = "text", encoding = "UTF-8")
       json <- fromJSON(txt)
-      
+
       if (!is.null(json$status) && identical(json$status, "error")) {
         stop(if (!is.null(json$message)) json$message else "Twelve Data error")
       }
-      
+
       if (!is.null(json$price) && nzchar(json$price)) {
-        price_val <- round(as.numeric(json$price), 4)
-        
+        raw_price <- as.numeric(json$price)
+        price_val <- convert_price(t, raw_price)
+
         ts_val <- as.POSIXct(
           round(as.numeric(Sys.time()) / 60) * 60,
           origin = "1970-01-01",
@@ -151,21 +202,23 @@ get_snapshot_row <- function(t) {
         td_ok <- TRUE
       }
     }, silent = TRUE)
-    
+
     # --- fallback na Yahoo daily close ---
     if (!td_ok) {
       data_d <- suppressWarnings(getSymbols(
-        Symbols = t,
+        Symbols = yahoo_symbol,
         src = "yahoo",
         auto.assign = FALSE
       ))
-      
-      price_val <- round(as.numeric(last(Cl(data_d))), 4)
+
+      raw_price <- as.numeric(last(Cl(data_d)))
+      price_val <- convert_price(t, raw_price)
+
       dt_val <- as.Date(index(last(data_d)))
       time_val <- paste0(format(dt_val, "%d.%m.%Y"), " close")
       source_val <- "yahoo_fallback"
     }
-    
+
     data.frame(
       ticker = t,
       name = name_val,
@@ -175,9 +228,9 @@ get_snapshot_row <- function(t) {
       source = source_val,
       stringsAsFactors = FALSE
     )
-    
+
   }, error = function(e) {
-    
+
     data.frame(
       ticker = t,
       name = name_val,
@@ -200,44 +253,55 @@ write.csv(snapshot_result, "stocks.csv",
 # 2) denní close za posledních 30 obchodních dnů z Yahoo
 # --------------------------------
 get_history_rows <- function(t) {
-  
+
   currency_val <- if (t %in% names(currency_map)) {
     unname(currency_map[[t]])
   } else {
     NA_character_
   }
-  
+
   name_val <- if (t %in% names(name_map)) {
     unname(name_map[[t]])
   } else {
     NA_character_
   }
-  
+
+  yahoo_symbol <- if (t %in% names(yahoo_symbol_map)) {
+    unname(yahoo_symbol_map[[t]])
+  } else {
+    t
+  }
+
   tryCatch({
-    
+
     data <- suppressWarnings(getSymbols(
-      Symbols = t,
+      Symbols = yahoo_symbol,
       src = "yahoo",
       from = Sys.Date() - 45,
       to   = Sys.Date(),
       auto.assign = FALSE
     ))
-    
+
+    close_vals <- round(
+      vapply(as.numeric(Cl(data)), function(x) convert_price(t, x), numeric(1)),
+      4
+    )
+
     df <- data.frame(
       date = format(index(data), "%d.%m.%Y"),
       ticker = t,
       name = name_val,
-      close = round(as.numeric(Cl(data)), 4),
+      close = close_vals,
       currency = currency_val,
       stringsAsFactors = FALSE
     )
-    
+
     if (nrow(df) > 30) {
       df <- tail(df, 30)
     }
-    
+
     df
-    
+
   }, error = function(e) {
     data.frame(
       date = NA_character_,
