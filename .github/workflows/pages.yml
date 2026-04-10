@@ -1,6 +1,9 @@
 name: Update CSV and deploy Pages
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
   schedule:
     - cron: "15 6-18 * * 1-5"
