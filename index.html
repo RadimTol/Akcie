@@ -243,16 +243,17 @@
       const snapshotRowsByTicker = {};
 
       snapshot.forEach(r => {
-        if (r.length >= 6) {
-          const row = {
-            ticker: r[0],
-            name: r[1],
-            price: parseFloat(r[2]),
-            currency: r[3],
-            time: r[4],
-            source: r[5],
-            parsedDate: parseSnapshotDate(r[4])
-          };
+    if (r.length >= 7) {
+    const row = {
+      ticker: r[0],
+      isin: r[1],
+      name: r[2],
+      price: parseFloat(r[3]),
+      currency: r[4],
+      time: r[5],
+      source: r[6],
+      parsedDate: parseSnapshotDate(r[5])
+    };
 
           if (!snapshotRowsByTicker[row.ticker]) {
             snapshotRowsByTicker[row.ticker] = [];
@@ -277,13 +278,14 @@
       const dataMap = {};
       const tickerOrder = [];
 
-      history.forEach(r => {
-        if (r.length >= 5) {
-          const dateStr = r[0];
-          const ticker = r[1];
-          const name = r[2];
-          const price = parseFloat(r[3]);
-          const currency = r[4];
+    history.forEach(r => {
+    if (r.length >= 6) {
+      const dateStr = r[0];
+      const ticker = r[1];
+      const isin = r[2];
+      const name = r[3];
+      const price = parseFloat(r[4]);
+      const currency = r[5];
 
           if (!tickerOrder.includes(ticker)) tickerOrder.push(ticker);
 
