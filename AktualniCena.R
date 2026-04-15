@@ -3,11 +3,10 @@ library(httr)
 library(jsonlite)
 
 # api_key <- Sys.getenv("TWELVE_DATA_API_KEY")
-# if (!nzchar(api_key)) {
-#   stop("Chybí TWELVE_DATA_API_KEY.")
-# }
-
 api_key <- "0cdfd49e58824502b938e045552a5ddc"
+if (!nzchar(api_key)) {
+  stop("Chybí TWELVE_DATA_API_KEY.")
+}
 
 # --------------------------------
 # puvodni akcie
@@ -396,7 +395,7 @@ snapshot_result <- do.call(rbind, snapshot_list)
 
 write.csv(
   snapshot_result,
-  "prices.csv",
+  "stocks.csv",
   row.names = FALSE,
   fileEncoding = "UTF-8"
 )
@@ -464,11 +463,11 @@ history_result <- do.call(rbind, history_list)
 
 write.csv(
   history_result,
-  "history_30d.csv",
+  "stocks_history_30d.csv",
   row.names = FALSE,
   fileEncoding = "UTF-8"
 )
 
 print(snapshot_result)
-print("Data ulozena do prices.csv")
-print("Historie ulozena do history_30d.csv")
+print("Data ulozena do stocks.csv")
+print("Historie ulozena do stocks_history_30d.csv")
