@@ -2,10 +2,12 @@ library(quantmod)
 library(httr)
 library(jsonlite)
 
-api_key <- Sys.getenv("TWELVE_DATA_API_KEY")
-if (!nzchar(api_key)) {
-  stop("Chybí TWELVE_DATA_API_KEY.")
-}
+# api_key <- Sys.getenv("TWELVE_DATA_API_KEY")
+# if (!nzchar(api_key)) {
+#   stop("Chybí TWELVE_DATA_API_KEY.")
+# }
+
+api_key <- "0cdfd49e58824502b938e045552a5ddc"
 
 # --------------------------------
 # puvodni akcie
