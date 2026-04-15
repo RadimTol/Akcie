@@ -7,11 +7,6 @@ if (!nzchar(api_key)) {
   stop("Chybí TWELVE_DATA_API_KEY.")
 }
 
-
-if (!nzchar(api_key)) {
-  stop("Chybi TWELVE_DATA_API_KEY.")
-}
-
 # --------------------------------
 # puvodni akcie
 # --------------------------------
@@ -399,7 +394,7 @@ snapshot_result <- do.call(rbind, snapshot_list)
 
 write.csv(
   snapshot_result,
-  "portfolio_prices.csv",
+  "prices.csv",
   row.names = FALSE,
   fileEncoding = "UTF-8"
 )
@@ -467,7 +462,7 @@ history_result <- do.call(rbind, history_list)
 
 write.csv(
   history_result,
-  "portfolio_history_30d.csv",
+  "history_30d.csv",
   row.names = FALSE,
   fileEncoding = "UTF-8"
 )
