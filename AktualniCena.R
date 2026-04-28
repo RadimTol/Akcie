@@ -14,7 +14,8 @@ if (!nzchar(api_key)) {
 stock_tickers <- c(
   "ABBV","ADM","RIO","AES","AMCR","KO","CVS","DVN",
   "DX","BEN","MBG.DE","OMV.VI","PK","PFE","O","SVC",
-  "TGT","VZ","VOW3.DE","BNP.PA","0291.HK","CSG.AS","PEN.PR"
+  "TGT","VZ","VOW3.DE","BNP.PA","0291.HK","CSG.AS","PEN.PR",
+  "SOBA.DE"   # AT&T Inc, nemecky listing v EUR
 )
 
 # --------------------------------
@@ -34,7 +35,10 @@ etf_tickers <- c(
   "SPYW",   # SPDR S&P EURO Dividend Aristocrats
   "ZPRG",   # SPDR S&P Global Dividend Aristocrats
   "EQDS",   # iShares MSCI Europe Quality Dividend Advanced
-  "ISPA"    # iShares STOXX Global Select Dividend 100 DE
+  "ISPA",   # iShares STOXX Global Select Dividend 100 DE
+  "2B76",   # iShares Automation & Robotics UCITS ETF
+  "JEGP",   # JPM Global Equity Premium Income Active UCITS ETF - USD dist
+  "VHYL"    # Vanguard FTSE All-World High Dividend Yield UCITS ETF
 )
 
 # --------------------------------
@@ -70,6 +74,7 @@ name_map <- c(
   "0291.HK" = "China Resources Beer",
   "CSG.AS"  = "CSG N.V.",
   "PEN.PR"  = "Photon Energy",
+  "SOBA.DE" = "AT&T Inc. (Tradegate / EUR)",
   
   # ETF
   "VUAG"    = "Vanguard S&P 500 UCITS ETF (USD) Acc",
@@ -84,7 +89,10 @@ name_map <- c(
   "SPYW"    = "SPDR S&P EURO Dividend Aristocrats",
   "ZPRG"    = "SPDR S&P Global Dividend Aristocrats",
   "EQDS"    = "iShares MSCI Europe Quality Dividend Advanced",
-  "ISPA"    = "iShares STOXX Global Select Dividend 100 DE"
+  "ISPA"    = "iShares STOXX Global Select Dividend 100 DE",
+  "2B76"    = "iShares Automation & Robotics UCITS ETF",
+  "JEGP"    = "JPM Global Equity Premium Income Active UCITS ETF - USD dist",
+  "VHYL"    = "Vanguard FTSE All-World High Dividend Yield UCITS ETF"
 )
 
 # --------------------------------
@@ -115,6 +123,7 @@ isin_map <- c(
   "0291.HK" = NA,
   "CSG.AS"  = NA,
   "PEN.PR"  = NA,
+  "SOBA.DE" = "US00206R1023",
   
   # ETF
   "VUAG" = "IE00BFMXXD54",
@@ -129,7 +138,10 @@ isin_map <- c(
   "SPYW" = "IE00B5M1WJ87",
   "ZPRG" = "IE00B9CQXS71",
   "EQDS" = "IE00BYYHSM20",
-  "ISPA" = "DE000A0F5UH1"
+  "ISPA" = "DE000A0F5UH1",
+  "2B76" = "IE00BYZK4552",
+  "JEGP" = "IE0003UVYC20",
+  "VHYL" = "IE00B8GKDB10"
 )
 
 # --------------------------------
@@ -160,6 +172,7 @@ currency_map <- c(
   "0291.HK" = "HKD",
   "CSG.AS"  = "EUR",
   "PEN.PR"  = "CZK",
+  "SOBA.DE" = "EUR",
   
   "VUAG"    = "GBP",
   "EEWD"    = "USD",
@@ -173,7 +186,10 @@ currency_map <- c(
   "SPYW"    = "EUR",
   "ZPRG"    = "USD",
   "EQDS"    = "EUR",
-  "ISPA"    = "EUR"
+  "ISPA"    = "EUR",
+  "2B76"    = "EUR",
+  "JEGP"    = "USD",
+  "VHYL"    = "GBP"
 )
 
 # --------------------------------
@@ -205,6 +221,7 @@ td_symbol_map <- c(
   "0291.HK" = "0291.HK",
   "CSG.AS"  = "CSG.AS",
   "PEN.PR"  = "PEN.PR",
+  "SOBA.DE" = "SOBA.DE",
   
   "VUAG"    = "VUAG",
   "EEWD"    = "EEWD",
@@ -218,7 +235,10 @@ td_symbol_map <- c(
   "SPYW"    = "SPYW",
   "ZPRG"    = "ZPRG",
   "EQDS"    = "EQDS",
-  "ISPA"    = "ISPA"
+  "ISPA"    = "ISPA",
+  "2B76"    = "2B76",
+  "JEGP"    = "JEGP",
+  "VHYL"    = "VHYL"
 )
 
 # --------------------------------
@@ -249,6 +269,7 @@ yahoo_symbol_map <- c(
   "0291.HK" = "0291.HK",
   "CSG.AS"  = "CSG.AS",
   "PEN.PR"  = "PEN.PR",
+  "SOBA.DE" = "SOBA.DE",
   
   "VUAG"    = "VUAG.L",
   "EEWD"    = "EEWD.L",
@@ -262,7 +283,10 @@ yahoo_symbol_map <- c(
   "SPYW"    = "SPYW.DE",
   "ZPRG"    = "ZPRG.L",
   "EQDS"    = "EQDS.L",
-  "ISPA"    = "ISPA.DE"
+  "ISPA"    = "ISPA.DE",
+  "2B76"    = "2B76.DE",
+  "JEGP"    = "JEGP.L",
+  "VHYL"    = "VHYL.L"
 )
 
 # --------------------------------
